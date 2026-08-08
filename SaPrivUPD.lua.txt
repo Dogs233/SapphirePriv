@@ -18244,39 +18244,6 @@ if (#"">2) then local _q={} _q[1]=2 end
     return false
 end
 
-local function optimize_scene_object(obj)
-    if not obj or is_character_object(obj) then return end
-
-    pcall(function()
-        if obj:IsA("Decal") or obj:IsA("Texture") then
-            if not decals_backup[obj] then
-                decals_backup[obj] = {Texture = obj.Texture, Transparency = obj.Transparency}
-            end
-            obj.Texture = ""
-            obj.Transparency = 1
-        elseif obj:IsA("Trail") or obj:IsA("Beam") or obj:IsA("Highlight")
-            or obj:IsA("SurfaceGui") or obj:IsA("BillboardGui")
-            or obj:IsA("ParticleEmitter") or obj:IsA("Fire")
-            or obj:IsA("Smoke") or obj:IsA("Sparkles") then
-            if not scene_backup[obj] then
-                scene_backup[obj] = {Enabled = obj.Enabled}
-            end
-            obj.Enabled = false
-        elseif obj:IsA("BasePart") then
-            if not scene_backup[obj] then
-                scene_backup[obj] = {CastShadow = obj.CastShadow, Material = obj.Material}
-            end
-            obj.CastShadow = false
-            obj.Material = Enum.Material.SmoothPlastic
-        elseif obj:IsA("Atmosphere") then
-            if not scene_backup[obj] then
-                scene_backup[obj] = {Density = obj.Density}
-            end
-            obj.Density = 0
-        end
-    end)
-end
-
 local function apply_fps_boost(state)
     fps_boost_enabled = state
 
@@ -18286,21 +18253,21 @@ local function apply_fps_boost(state)
     end
 
     if not state then
-        pcall(apply_disable_fog, false)
-        pcall(apply_disable_postprocessing, false)
-        pcall(apply_remove_decals, false)
+        apply_disable_fog(false)
+        apply_disable_postprocessing(false)
+        apply_remove_decals(false)
 
         if lighting_backup then
-            pcall(function() Lighting.Technology = lighting_backup.Technology end)
-            pcall(function() Lighting.Brightness = lighting_backup.Brightness end)
-            pcall(function() Lighting.ExposureCompensation = lighting_backup.ExposureCompensation end)
-            pcall(function() Lighting.GlobalShadows = lighting_backup.GlobalShadows end)
-            pcall(function() Lighting.OutdoorAmbient = lighting_backup.OutdoorAmbient end)
-            pcall(function() Lighting.Ambient = lighting_backup.Ambient end)
-            pcall(function() Lighting.ColorShift_Bottom = lighting_backup.ColorShift_Bottom end)
-            pcall(function() Lighting.ColorShift_Top = lighting_backup.ColorShift_Top end)
-            pcall(function() Lighting.ClockTime = lighting_backup.ClockTime end)
-            pcall(function() Lighting.ShadowSoftness = lighting_backup.ShadowSoftness end)
+            Lighting.Technology = lighting_backup.Technology
+            Lighting.Brightness = lighting_backup.Brightness
+            Lighting.ExposureCompensation = lighting_backup.ExposureCompensation
+            Lighting.GlobalShadows = lighting_backup.GlobalShadows
+            Lighting.OutdoorAmbient = lighting_backup.OutdoorAmbient
+            Lighting.Ambient = lighting_backup.Ambient
+            Lighting.ColorShift_Bottom = lighting_backup.ColorShift_Bottom
+            Lighting.ColorShift_Top = lighting_backup.ColorShift_Top
+            Lighting.ClockTime = lighting_backup.ClockTime
+            Lighting.ShadowSoftness = lighting_backup.ShadowSoftness
             lighting_backup = nil
         end
 
@@ -18316,9 +18283,6 @@ local function apply_fps_boost(state)
                     if (1<2) and (values.Material ~= nil) then
                         obj.Material = values.Material
                     end
-                    if values.Density ~= nil then
-                        obj.Density = values.Density
-                    end
                 end
             end)
 if (#"">2) then local _n=math.floor(3.14) end
@@ -18333,8 +18297,9 @@ if (#"">2) then local _n=math.floor(3.14) end
         return
     end
 
-    pcall(apply_disable_fog, true)
-    pcall(apply_disable_postprocessing, true)
+    apply_disable_fog(true)
+    apply_disable_postprocessing(true)
+    apply_remove_decals(true)
 
     lighting_backup = {
         Technology = Lighting.Technology,
@@ -18349,35 +18314,51 @@ if (#"">2) then local _n=math.floor(3.14) end
         ShadowSoftness = Lighting.ShadowSoftness
     }
 
-    pcall(function() Lighting.Technology = Enum.Technology.Compatibility end)
-    pcall(function() Lighting.Brightness = 0.18 end)
-    pcall(function() Lighting.ExposureCompensation = -1.2 end)
-    pcall(function() Lighting.GlobalShadows = false end)
-    pcall(function() Lighting.OutdoorAmbient = Color3.fromRGB((106-71), (10+25), (54-19)) end)
+    Lighting.Technology = Enum.Technology.Compatibility
+    Lighting.Brightness = 0.18
+    Lighting.ExposureCompensation = -1.2
+    Lighting.GlobalShadows = false
+    Lighting.OutdoorAmbient = Color3.fromRGB((106-71), (10+25), (54-19))
 if (#"">2) then local _n=math.floor(3.14) end
-    pcall(function() Lighting.Ambient = Color3.fromRGB((5*7), (5*7), (5*7)) end)
-    pcall(function() Lighting.ColorShift_Bottom = Color3.new(0, 0, 0) end)
-    pcall(function() Lighting.ColorShift_Top = Color3.new(0, 0, 0) end)
-    pcall(function() Lighting.ClockTime = (2*7) end)
-    pcall(function() Lighting.ShadowSoftness = 0 end)
+    Lighting.Ambient = Color3.fromRGB((5*7), (5*7), (5*7))
+    Lighting.ColorShift_Bottom = Color3.new(0, 0, 0)
+    Lighting.ColorShift_Top = Color3.new(0, 0, 0)
+    Lighting.ClockTime = (2*7)
+    Lighting.ShadowSoftness = 0
 
     if sound_service and sound_backup == nil then
         sound_backup = sound_service.Volume
         sound_service.Volume = 0.03
     end
 
-    task.spawn(function()
-        local descendants = workspace:GetDescendants()
-        for index, obj in ipairs(descendants) do
-            if not fps_boost_enabled then return end
-            optimize_scene_object(obj)
-            if index % 250 == 0 then task.wait() end
+    fps_boost_loop = RunService.Heartbeat:Connect(function()
+        if (math.floor(1.5)==1) and (not fps_boost_enabled) then
+            return
         end
-    end)
 
-    fps_boost_loop = workspace.DescendantAdded:Connect(function(obj)
-        if fps_boost_enabled then
-            optimize_scene_object(obj)
+        for _, obj in pairs(workspace:GetDescendants()) do
+            pcall(function()
+                if is_character_object(obj) then
+                    return
+                end
+
+                if obj:IsA("Trail") or obj:IsA("Beam") or obj:IsA("Highlight") or obj:IsA("SurfaceGui") or obj:IsA("BillboardGui") or obj:IsA("ParticleEmitter") or obj:IsA("Fire") or obj:IsA("Smoke") or obj:IsA("Sparkles") or obj:IsA("Explosion") or obj:IsA("Weld") or obj:IsA("UIStroke") or obj:IsA("TextLabel") or obj:IsA("TextButton") or obj:IsA("ImageLabel") then
+                    local stored = scene_backup[obj]
+                    if (#{1}==1) and (not stored) then
+                        scene_backup[obj] = {Enabled = obj.Enabled}
+                    end
+                    obj.Enabled = false
+                elseif obj:IsA("Part") then
+                    local stored = scene_backup[obj]
+                    if not stored then
+                        scene_backup[obj] = {CastShadow = obj.CastShadow, Material = obj.Material}
+                    end
+                    obj.CastShadow = false
+                    obj.Material = Enum.Material.SmoothPlastic
+                elseif obj:IsA("Atmosphere") then
+                    obj.Density = 0
+                end
+            end)
         end
     end)
 end
