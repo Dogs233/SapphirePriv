@@ -20295,6 +20295,11 @@ function System.parry.keypress()
     end)
 end
 
+local _hardware_virtual_input = nil
+pcall(function()
+    _hardware_virtual_input = cloneref(game:GetService("VirtualInputManager"))
+end)
+
 function System.parry.hardware_click()
     if not LocalPlayer.Character then return end
 
@@ -20309,20 +20314,23 @@ function System.parry.hardware_click()
     end
 
     if type(press) == "function" and type(release) == "function" then
-        local ok = pcall(function()
-            press()
-            task.wait()
-            release()
-        end)
+        local ok = pcall(press)
+        if ok then
+            task.defer(function()
+                pcall(release)
+            end)
+        end
         if ok then return end
     end
 
-    local virtual_input_ok = pcall(function()
-        local virtual_input = game:GetService("VirtualInputManager")
+    local virtual_input_ok = _hardware_virtual_input and pcall(function()
         local mouse = UserInputService:GetMouseLocation()
-        virtual_input:SendMouseButtonEvent(mouse.X, mouse.Y, 0, true, game, 0)
-        task.wait()
-        virtual_input:SendMouseButtonEvent(mouse.X, mouse.Y, 0, false, game, 0)
+        _hardware_virtual_input:SendMouseButtonEvent(mouse.X, mouse.Y, 0, true, game, 0)
+        task.defer(function()
+            pcall(function()
+                _hardware_virtual_input:SendMouseButtonEvent(mouse.X, mouse.Y, 0, false, game, 0)
+            end)
+        end)
     end)
 
     if not virtual_input_ok then
